@@ -4,6 +4,6 @@ Test cases drawn from canonical visualization tasks, ParaView regression tests, 
 
 Two versions of prompts of differing verbosity describe the desired visualization.
 One prompt is written with detailed instructions and contains more visualization jargon that might appear in the ParaView documentation; we refer to this as the “full prompt.”
-The second prompt is written in a slightly relaxed conversational style and contains less (but still some) visualization jargon; we refer to this as the “quick prompt.”
+The second prompt is written in a slightly relaxed conversational style and contains less visualization jargon; we refer to this as the “quick prompt.”
 
 Each directory has a README with more details.
