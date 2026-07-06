@@ -10,6 +10,8 @@ def extract_python_code(text, name):
     code_blocks = re.findall(r"```python(.*?)```", text, re.DOTALL)
 
     GEN_CODE_DIR = os.getenv("GEN_CODE_DIR")
+    assert GEN_CODE_DIR is not None, "Please set GEN_CODE_DIR env var"
+    os.makedirs(GEN_CODE_DIR, exist_ok=True)
 
     for i, block in enumerate(code_blocks, start=1):
         # Strip leading/trailing whitespace and maintain internal formatting

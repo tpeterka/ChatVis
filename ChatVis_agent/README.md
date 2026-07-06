@@ -57,12 +57,30 @@ export GEN_CODE_DIR=<existing directory where generated Python code will be plac
 export GEN_VIS_DIR=<existing directory where generated visualizations will be placed (absolute full path)>
 export PATH_TO_PVPYTHON=<path to bin directory where pvpython can be found (absolute full path, excluding pvpython executable, eg. /Applications/ParaView-5.13.1.app/Contents/bin)>
 export TOKENIZERS_PARALLELISM=true
-export OPENAI_API_KEY=<your OpenAI key or ANL username if using argo-proxy>
+export LLM_PROVIDER=<one of: openai (default), anthropic, gemini, llama>
+export OPENAI_API_KEY=<API key if using openai; or ANL username if using argo-proxy>
+# for anthropic: no key needed if authenticated via `ant auth login`; otherwise export ANTHROPIC_API_KEY
+# for gemini: export GEMINI_API_KEY
+# for llama: optional LLAMA_API_KEY (local servers accept any key)
+export LLM_MODEL=<optional model name override; required for llama>
+export LLM_BASEURL=<optional API endpoint override, eg http://localhost:11434/v1 for a local ollama server>
 
 # if running argo-proxy:
 
 export OPENAI_BASE_URL=<url from argo-proxy execution:port>/v1 # don't forget to append "/v1", eg http://0.0.0.0:54901/v1
 ```
+
+The LLM environment variables:
+
+| Variable | Required | Description |
+|---|---|---|
+| `LLM_PROVIDER` | No (default: `openai`) | One of `openai`, `anthropic`, `gemini`, `llama` |
+| `OPENAI_API_KEY` | For `openai` | API key (or ANL username if using argo-proxy) |
+| `ANTHROPIC_API_KEY` | No | For `anthropic`. Optional: the SDK also accepts `ANTHROPIC_AUTH_TOKEN` or an `ant auth login` OAuth profile |
+| `GEMINI_API_KEY` | For `gemini` | API key |
+| `LLAMA_API_KEY` | No | For `llama`; defaults to a dummy key (local servers don't check it) |
+| `LLM_MODEL` | No | Model name override. Built-in defaults: `gpt-4o` (openai), `claude-opus-4-8` (anthropic), `gemini-2.5-flash` (gemini). Required for `llama` |
+| `LLM_BASEURL` | No | API endpoint override for OpenAI-compatible providers (`openai`, `gemini`, `llama`); defaults to `http://localhost:11434/v1` (ollama) for `llama`. Ignored for `anthropic` — use `ANTHROPIC_BASE_URL` |
 
 ## Execution
 

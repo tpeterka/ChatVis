@@ -5,36 +5,30 @@
 # --- Standard library ---
 import os
 import sys
-import re
 import json
-import ast
 import pickle
 import subprocess
-from pathlib import Path
 import numpy as np
 
 # --- Third-party libraries ---
 import faiss
 from sentence_transformers import SentenceTransformer
-import openai
 
 # --- Local utilities ---
 from Utility.extract_utils import extract_python_code, extract_error_messages
+from Utility.llm_client import LLMClient
 
 # Path to pvpython
 PATH_TO_PVPYTHON = os.getenv("PATH_TO_PVPYTHON")
+assert PATH_TO_PVPYTHON is not None, "Please set PATH_TO_PVPYTHON env var"
 path_to_pvpython = PATH_TO_PVPYTHON + ":$PATH"  
 print("path to pvpython", PATH_TO_PVPYTHON)
 os.environ["PATH"] += os.pathsep + path_to_pvpython
 
-# OpenAI key, set through environment variable
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-client = openai.OpenAI(
-    api_key = OPENAI_API_KEY,
-)
-
-# LLM model
-LLM_MODEL = os.getenv("LLM_MODEL", "gpt-4o")
+# LLM provider/model/credentials, set through environment variables:
+# LLM_PROVIDER, LLM_MODEL, LLM_BASEURL + provider API key (see Utility/llm_client.py)
+llm = LLMClient()
+print("LLM provider:", llm.provider, "model:", llm.model)
 
 # Read and parse the JSON file
 json_file_path = "operations.json"
@@ -49,7 +43,7 @@ def get_embedding(text):
     return model.encode(text, convert_to_numpy=True).astype(np.float32)
 
 # Initialize FAISS index
-d = model.get_sentence_embedding_dimension()  # Get correct embedding dimension
+d = model.get_embedding_dimension()  # Get correct embedding dimension
 index = faiss.IndexFlatL2(d)  # Use L2 distance metric for FAISS
 
 # Generate and add embeddings for each operation
@@ -57,7 +51,7 @@ metadata_lookup = []
 for op in operations_json:
     text = op["name"] + " " + op["description"] + " " + op["code_snippet"]
     embedding = get_embedding(text).reshape(1, -1)  # Reshape for FAISS
-    index.add(embedding)
+    index.add(embedding)  # pyright: ignore[reportCallIssue]
     metadata_lookup.append(op)  # Store the original entry
 
 # Save the FAISS index to disk
@@ -85,7 +79,7 @@ def search_similar_operation(query_text, top_k=5):
 
     # Get nearest neighbors from FAISS
     top_k = min(top_k, total_vectors)  # Ensure we don't exceed available entries
-    distances, indices = index.search(query_embedding, top_k)
+    distances, indices = index.search(query_embedding, top_k)  # pyright: ignore[reportCallIssue]
 
     matches = []
     for idx in indices[0]:  # I is shape (1, k)
@@ -173,8 +167,8 @@ def run_single_test_case(test_case_path):
     python_file_name = '-full-prompt'
     # python_file_name = '-quick-prompt'
 
-    cwd = Path.cwd()
     eval_folder = os.getenv("GEN_VIS_DIR")
+    assert eval_folder is not None, "Please set GEN_VIS_DIR env var"
     os.makedirs(eval_folder, exist_ok=True)
     print("generated visualizations will be in", eval_folder, "\n")
 
@@ -203,20 +197,10 @@ def run_single_test_case(test_case_path):
         print(prompt)
 
     unique_ops = process_prompt(prompt)
-    prompt_new = prompt + 'Follow Example Operations \n{unique_ops}'
-
-    # Set your LLM model here
-    llm_model = LLM_MODEL
+    prompt_new = prompt + f'Follow Example Operations \n{unique_ops}'
 
     # Call the LLM
-    chat_completion = client.chat.completions.create(
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": prompt_new},
-        ],
-        model = llm_model
-    )
-    script = chat_completion.choices[0].message.content  
+    script = llm.chat(system_prompt, prompt_new)
 
     # print("script:\n", script, "\n")
     # print("task+python_file_name:", task+python_file_name)
@@ -257,16 +241,7 @@ def run_single_test_case(test_case_path):
             """
 
             # Call the LLM again
-            response = client.chat.completions.create(
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": followup_question},
-                ],
-                model=llm_model
-            )
-
-            # Assuming the AI provides new Python code in the response
-            script = response.choices[0].message.content
+            script = llm.chat(system_prompt, followup_question)
             file_path = extract_python_code(script, task+python_file_name)
 
             # Execute the new script with pvpython

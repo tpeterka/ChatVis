@@ -4,3 +4,5 @@ ChatVis_agent/paraview_operations_faiss.index
 ChatVis_agent/run_all.ipynb
 ChatVis_agent/metadata_lookup.pkl
 .venv
+.env
+**/generated_*
